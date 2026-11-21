@@ -183,8 +183,26 @@ export function run(input) {
     recordLine = line;
     recordRow = header && columns === null ? null : rows.length;
 
+    // Fast path: a record that sits on one line holding no quote and no CR but its own CRLF's reads exactly as
+    // that line split at its commas — no field of it is quoted, no CR of it is stray, no error can be met.
     let fields = null;
     let quoted = false;
+    {
+      const nl = text.indexOf('\n', pos);
+      const lineEnd = nl === -1 ? len : nl;
+      const rawLine = text.slice(pos, lineEnd);
+      if (!rawLine.includes('"')) {
+        const ri = rawLine.indexOf('\r');
+        let body = null;
+        if (ri === -1) body = rawLine;
+        else if (nl !== -1 && ri === rawLine.length - 1) body = text.slice(pos, lineEnd - 1);
+        if (body !== null) {
+          fields = body.split(',');
+          pos = nl === -1 ? len : nl + 1;
+          if (nl !== -1) line += 1;
+        }
+      }
+    }
     if (fields === null) {
       fields = [];
       let field;
